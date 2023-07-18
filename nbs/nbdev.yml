@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "vid_chains"
+  site-url: "https://DreamAIIO.github.io/vid_chains"
+  description: "Tools for Video Analysis"
+  repo-branch: main
+  repo-url: "https://github.com/DreamAIIO/vid_chains"
