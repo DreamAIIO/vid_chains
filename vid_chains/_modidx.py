@@ -5,4 +5,8 @@ d = { 'settings': { 'branch': 'main',
                 'doc_host': 'https://DreamAIIO.github.io',
                 'git_url': 'https://github.com/DreamAIIO/vid_chains',
                 'lib_path': 'vid_chains'},
-  'syms': {'vid_chains.core': {'vid_chains.core.foo': ('core.html#foo', 'vid_chains/core.py')}}}
+  'syms': { 'vid_chains.core': {},
+            'vid_chains.imports': {},
+            'vid_chains.utils': { 'vid_chains.utils.detect_objects': ('utils.html#detect_objects', 'vid_chains/utils.py'),
+                                  'vid_chains.utils.inter_dist': ('utils.html#inter_dist', 'vid_chains/utils.py'),
+                                  'vid_chains.utils.load_obj_model': ('utils.html#load_obj_model', 'vid_chains/utils.py')}}}
