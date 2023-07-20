@@ -48,4 +48,3 @@ def inter_dist(objects):
             dis.append(math.dist(c[i],c[j]))
     #return st,dis
     return dis
-    
