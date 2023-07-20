@@ -7,12 +7,14 @@ __all__ = ['load_obj_model', 'detect_objects', 'inter_dist']
 from .imports import *
 
 # %% ../nbs/00_utils.ipynb 4
-def load_obj_model(name='yolov8n.pt'):
+def load_obj_model(name="yolov8n.pt"):
     return YOLO(name)
+
 
 def detect_objects(model, img):
     res = model(img, stream=True)
-    return [{'boxes': r.boxes.data.detach().cpu().tolist()} for r in res]
+    return [{"boxes": r.boxes.data.detach().cpu().tolist()} for r in res]
+
 
 def inter_dist(objects):
     return []
