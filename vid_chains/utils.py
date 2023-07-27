@@ -19,6 +19,15 @@ import sys
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
 from segment_anything.modeling import Sam
 
+import gdown
+sys.path.insert(3, os.getcwd()+"/Track_Anything")
+sys.path.insert(1, os.getcwd()+"/Track_Anything/tracker")
+sys.path.insert(2, sys.path[1]+"/model")
+from track_anything import TrackingAnything
+from track_anything import parse_augment
+import requests
+import torchvision
+
 # %% ../nbs/00_utils.ipynb 4
 def load_obj_model(name="yolov8n.pt"):
     return YOLO(name)
@@ -126,8 +135,8 @@ def calculateIoU(gtMask, predMask):
 
 def segment_with_prompts(sam_model:Sam, image:np.ndarray, **kwargs):
   h,w,_ = image.shape
-  points=np.array([[w*0.5, h*0.5], [0, h], [w, 0], [0,0], [w,h]])
-  labels = np.array([1, 0, 0, 0, 0])
+  points = kwargs.get('points', np.array([[w*0.5, h*0.5], [0, h], [w, 0], [0,0], [w,h]]))
+  labels = kwargs.get('labels', np.array([1, 0, 0, 0, 0]))
   mask = kwargs.get('mask', None)
   mask = st.resize(mask, (256, 256), order=0, preserve_range=True, anti_aliasing=False)
   mask = np.stack((mask,)*1, axis = 0)
@@ -167,5 +176,8 @@ def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, 
   mask = cv2.imread(mask_fname)
   mask = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
   mask = mask.astype(bool)
-  masks = seg_function(sam_model, image, mask=mask)
+  h,w,_ = image.shape
+  points = kwargs.get('points', np.array([[w*0.5, h*0.5], [0, h], [w, 0], [0,0], [w,h]]))
+  labels = kwargs.get('labels', np.array([1, 0, 0, 0, 0]))
+  masks = seg_function(sam_model, image, mask=mask, points=points, labels=labels)
   return masks
