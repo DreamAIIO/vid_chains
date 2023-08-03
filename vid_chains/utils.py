@@ -3,40 +3,45 @@
 # %% auto 0
 __all__ = ['load_obj_model', 'detect_objects', 'centroid', 'list_centroids', 'inter_dist', 'show_mask', 'show_points', 'show_box',
            'show_anns', 'get_mask_area', 'calculateIoU', 'segment_with_prompts', 'load_sam_model', 'segment_everything',
-           'segment']
+           'segment', 'get_points', 'display_direction', 'get_velocity']
 
 # %% ../nbs/00_utils.ipynb 2
-from .imports import *
+# from vid_chains.imports import *
+from dreamai.core import *
+from dreamai.vision import *
+from dreamai.imports import *
+
+from langchain_ray.utils import *
+from langchain_ray.chains import *
+from langchain_ray.imports import *
+
+from ultralytics import YOLO
 import math
+from typing import Union
 
 import numpy as np
 import torch
 import matplotlib.pyplot as plt
 import cv2
 import os
-import skimage.transform as st
 import sys
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
 from segment_anything.modeling import Sam
+from mmflow.apis import inference_model, init_model
+from mmflow.datasets import visualize_flow, write_flow
+import mmcv
 
-import gdown
-sys.path.insert(3, os.getcwd()+"/Track_Anything")
-sys.path.insert(1, os.getcwd()+"/Track_Anything/tracker")
-sys.path.insert(2, sys.path[1]+"/model")
-from track_anything import TrackingAnything
-from track_anything import parse_augment
-import requests
-import torchvision
 
 # %% ../nbs/00_utils.ipynb 4
 def load_obj_model(name="yolov8n.pt"):
     return YOLO(name)
 
 
-def detect_objects(model, img):
-    res = model(img, stream=True)
-    return [{"boxes": r.boxes.data.detach().cpu().tolist()} for r in res]
-
+def detect_objects(model, img, stream=True, draw_bbox = False):
+    res = model(img, stream=stream)
+    if draw_bbox:
+        return [{"boxes": r.boxes.data.detach().cpu().tolist(), 'img':r.plot()} for r in res] 
+    return [{"boxes": r.boxes.data.detach().cpu().tolist(), 'img':img} for r in res]
 
 def centroid(l):
     t = []
@@ -109,6 +114,8 @@ def show_anns(anns):
 
 
 # %% ../nbs/00_utils.ipynb 6
+# Object Segmentation with SAM...
+
 def get_mask_area(mask:np.ndarray):
   area = mask.sum() # assumes binary mask (True == 1)
   return area
@@ -181,3 +188,52 @@ def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, 
   labels = kwargs.get('labels', np.array([1, 0, 0, 0, 0]))
   masks = seg_function(sam_model, image, mask=mask, points=points, labels=labels)
   return masks
+
+# %% ../nbs/00_utils.ipynb 8
+def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bool=False, stream:bool=True):
+    if isinstance(img, str):
+        img = cv2.imread(img)
+    yolo = load_obj_model()
+    result = detect_objects(model = yolo, img = img, stream = stream, draw_bbox = draw_bbox)
+    points = []
+    labels = []
+    for box in result[0]['boxes']:
+        x1, y1, x2, y2 = box[:4]
+        mid_x = int(x1+((x2-x1)/2))
+        mid_y = int(y1+((y2-y1)/2))
+        points.append([[mid_x, mid_y]])
+        labels.append(1)# 
+    if return_img:
+        return result[0]['img'], result[0]['boxes'], points, labels 
+    return result[0]['boxes'], points, labels
+
+
+# %% ../nbs/00_utils.ipynb 9
+# Extract direction and speed from the selected objects using RAFT (optical flow algorithm)..
+
+
+def display_direction(result:np.ndarray, mean_u, mean_v, points):
+    h_rat = 10
+    w_rat = 10
+    image_arr = cv2.arrowedLine(img=result, pt1=(points[0],points[1]), pt2=(points[0] + int(mean_u)*w_rat,points[1]+int(mean_v)*h_rat), color=(0,0,255), thickness=5,line_type=8, tipLength = 0.5)
+    return image_arr
+
+def get_velocity(img1:str, img2:str, boxes:list, res:np.ndarray, model=None, save_img:bool = True, out_dir:str = './frames/', config_file:str = 'raft_8x2_50k_kitti2015_288x960.py', checkpoint_file:str = 'raft_8x2_50k_kitti2015_288x960.pth', device:str='cpu'):
+    if model == None:
+        model = init_model(config_file, checkpoint_file, device=device)
+    result = inference_model(model, img1, img2)
+    img = res
+    for box in boxes:
+        x1, y1, x2, y2 = box[:4]
+        mid_x = int(x1+((x2-x1)/2))
+        mid_y = int(y1+((y2-y1)/2))
+        flows_u = result[int(y1):int(y2), int(x1):int(x2), 1]
+        flows_v = result[int(y1):int(y2), int(x1):int(x2), 0]
+        mean_u = flows_u.mean()
+        mean_v = flows_v.mean()
+        img = display_direction(img, mean_u, mean_v, (mid_x, mid_y))
+        flow_map = visualize_flow(result, save_file='flow_map.png')
+        vel = math.sqrt(pow(mean_u, 2)+(pow(mean_v, 2)))
+    if save_img:
+        cv2.imwrite('arrow_and_box.png', img)
+    return vel, img, flow_map
