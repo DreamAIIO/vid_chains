@@ -2,9 +2,9 @@
 
 # %% auto 0
 __all__ = ['load_obj_model', 'detect_objects', 'get_width', 'list_widths', 'centroid', 'list_centroids', 'inter_dist',
-           'focal_len_to_px', 'camera_to_obj_dist', 'show_mask', 'show_points', 'show_box',
-           'show_anns', 'get_mask_area', 'calculateIoU', 'segment_with_prompts', 'load_sam_model', 'segment_everything',
-           'segment', 'get_points', 'display_direction', 'get_velocity']
+           'focal_len_to_px', 'camera_to_obj_dist', 'show_mask', 'show_points', 'show_box', 'show_anns',
+           'get_mask_area', 'calculateIoU', 'segment_with_prompts', 'load_sam_model', 'segment_everything', 'segment',
+           'get_points', 'display_direction', 'get_velocity']
 
 # %% ../nbs/00_utils.ipynb 2
 from .imports import *
@@ -71,7 +71,21 @@ def inter_dist(obj):
     # return st,dis
     return dis
 
-# %% ../nbs/00_utils.ipynb 5
+
+def focal_len_to_px(focal_len, sensor_px):
+    return round((focal_len / sensor_px) * 1000)
+
+
+def camera_to_obj_dist(focal_length_px, obj, real_width):
+    widths = list_widths(obj)
+    dists = []
+    for w in widths:
+        distance = (real_width * focal_length_px) / w
+        dists.append(distance)
+
+    return dists
+
+# %% ../nbs/00_utils.ipynb 6
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -109,7 +123,7 @@ def show_anns(anns):
     ax.imshow(img)
 
 
-# %% ../nbs/00_utils.ipynb 6
+# %% ../nbs/00_utils.ipynb 7
 # Object Segmentation with SAM...
 
 def get_mask_area(mask:np.ndarray):
@@ -185,7 +199,7 @@ def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, 
   masks = seg_function(sam_model, image, mask=mask, points=points, labels=labels)
   return masks
 
-# %% ../nbs/00_utils.ipynb 8
+# %% ../nbs/00_utils.ipynb 9
 def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bool=False, stream:bool=True):
     if isinstance(img, str):
         img = cv2.imread(img)
@@ -204,7 +218,7 @@ def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bo
     return result[0]['boxes'], points, labels
 
 
-# %% ../nbs/00_utils.ipynb 9
+# %% ../nbs/00_utils.ipynb 10
 # Extract direction and speed from the selected objects using RAFT (optical flow algorithm)..
 
 
@@ -233,17 +247,3 @@ def get_velocity(img1:str, img2:str, boxes:list, res:np.ndarray, model=None, sav
     if save_img:
         cv2.imwrite('arrow_and_box.png', img)
     return vel, img, flow_map
-
-
-def focal_len_to_px(focal_len, sensor_px):
-    return round((focal_len / sensor_px) * 1000)
-
-
-def camera_to_obj_dist(focal_length_px, obj, real_width):
-    widths = list_widths(obj)
-    dists = []
-    for w in widths:
-        distance = (real_width * focal_length_px) / w
-        dists.append(distance)
-
-    return dists
