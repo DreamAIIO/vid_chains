@@ -11,6 +11,7 @@ from .imports import *
 import math
 import operator
 
+
 # %% ../nbs/00_utils.ipynb 4
 def setify(o): return o if isinstance(o,set) else set(list(o))
 
@@ -66,30 +67,36 @@ def detect_objects(model, img):
     res = model(img, stream=True)
     return [{"boxes": r.boxes.data.detach().cpu().tolist()} for r in res]
 
-def get_width (l):
-    w = l[2]-l[0]
+
+def get_width(l):
+    w = l[2] - l[0]
     return w
 
-def list_widths (obj):
-    w=[]
-    for i in range(0,len(obj.get('boxes'))):
-      l=[]
-      for j in range(0,6):
-        l.append(obj.get('boxes')[i][j])
-      if l[5] == 39.0: #very specific test case for bottles so will ignore other objects, will remove this in the future
-        width = get_width(l)
-        w.append(width)
+
+def list_widths(obj):
+    w = []
+    for i in range(0, len(obj.get("boxes"))):
+        l = []
+        for j in range(0, 6):
+            l.append(obj.get("boxes")[i][j])
+        if (
+            l[5] == 39.0
+        ):  # very specific test case for bottles so will ignore other objects, will remove this in the future
+            width = get_width(l)
+            w.append(width)
     return w
 
-def centroid (l):
+
+def centroid(l):
     t = []
-    cx = (l[0]+l[2])/2.0
-    cy = (l[1]+l[3])/2.0
+    cx = (l[0] + l[2]) / 2.0
+    cy = (l[1] + l[3]) / 2.0
     t.append(cx)
     t.append(cy)
     return t
 
 
+<<<<<<< HEAD
 def list_centroids (obj):
     c=[]
     for i in range(0,len(obj)):
@@ -98,26 +105,37 @@ def list_centroids (obj):
         l.append(obj[i][j])
       centre = centroid(l)
       c.append(centre)
+=======
+def list_centroids(obj):
+    c = []
+    for i in range(0, len(obj.get("boxes"))):
+        l = []
+        for j in range(0, 4):
+            l.append(obj.get("boxes")[i][j])
+        centre = centroid(l)
+        c.append(centre)
+>>>>>>> c3ce2c56add648df5104dcf6f57b38fe05ccbc49
     return c
 
+
 def inter_dist(obj):
-   
     c = list_centroids(obj)
     dis = []
     st = []
-    for i in range(0,len(c)):
-        for j in range(i+1,len(c)):
-            #st.append("Distance b/w object "+str(i)+" and object "+str(j))
-            #st.append("D("+str(i)+","+str(j)+")")
-            dis.append(math.dist(c[i],c[j]))
-    #return st,dis
+    for i in range(0, len(c)):
+        for j in range(i + 1, len(c)):
+            # st.append("Distance b/w object "+str(i)+" and object "+str(j))
+            # st.append("D("+str(i)+","+str(j)+")")
+            dis.append(math.dist(c[i], c[j]))
+    # return st,dis
     return dis
 
-def focal_len_to_px (focal_len, sensor_px):
-    return round((focal_len/sensor_px)*1000)
 
-def camera_to_obj_dist (focal_length_px, obj, real_width):
+def focal_len_to_px(focal_len, sensor_px):
+    return round((focal_len / sensor_px) * 1000)
 
+
+def camera_to_obj_dist(focal_length_px, obj, real_width):
     widths = list_widths(obj)
     dists = []
     for w in widths:
