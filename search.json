@@ -1,0 +1,23 @@
+[
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "vid_chains",
+    "section": "",
+    "text": "pip install vid_chains"
+  },
+  {
+    "objectID": "index.html#install",
+    "href": "index.html#install",
+    "title": "vid_chains",
+    "section": "",
+    "text": "pip install vid_chains"
+  },
+  {
+    "objectID": "utils.html",
+    "href": "utils.html",
+    "title": "Utils",
+    "section": "",
+    "text": "source\n\ncamera_to_obj_dist\n\n camera_to_obj_dist (focal_length_px, obj, real_width)\n\n\nsource\n\n\nfocal_len_to_px\n\n focal_len_to_px (focal_len, sensor_px)\n\n\nsource\n\n\ninter_dist\n\n inter_dist (obj)\n\n\nsource\n\n\nlist_centroids\n\n list_centroids (obj)\n\n\nsource\n\n\ncentroid\n\n centroid (l)\n\n\nsource\n\n\nlist_widths\n\n list_widths (obj)\n\n\nsource\n\n\nget_width\n\n get_width (l)\n\n\nsource\n\n\ndetect_objects\n\n detect_objects (model, img)\n\n\nsource\n\n\nload_obj_model\n\n load_obj_model (name='yolov8n.pt')"
+  }
+]
