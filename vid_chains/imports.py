@@ -19,6 +19,7 @@ import sys
 # import skimage.transform as st
 from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
 from segment_anything.modeling import Sam
+os.system('mim install mmcv-full==1.6.0')
 from mmflow.apis import inference_model, init_model
 from mmflow.datasets import visualize_flow, write_flow
 import mmcv
