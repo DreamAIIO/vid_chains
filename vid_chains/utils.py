@@ -85,7 +85,7 @@ def camera_to_obj_dist(focal_length_px, obj, real_width):
 
     return dists
 
-# %% ../nbs/00_utils.ipynb 6
+# %% ../nbs/00_utils.ipynb 5
 def show_mask(mask, ax, random_color=False):
     if random_color:
         color = np.concatenate([np.random.random(3), np.array([0.6])], axis=0)
@@ -123,7 +123,7 @@ def show_anns(anns):
     ax.imshow(img)
 
 
-# %% ../nbs/00_utils.ipynb 7
+# %% ../nbs/00_utils.ipynb 6
 # Object Segmentation with SAM...
 
 def get_mask_area(mask:np.ndarray):
@@ -199,7 +199,7 @@ def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, 
   masks = seg_function(sam_model, image, mask=mask, points=points, labels=labels)
   return masks
 
-# %% ../nbs/00_utils.ipynb 9
+# %% ../nbs/00_utils.ipynb 7
 def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bool=False, stream:bool=True):
     if isinstance(img, str):
         img = cv2.imread(img)
@@ -218,7 +218,7 @@ def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bo
     return result[0]['boxes'], points, labels
 
 
-# %% ../nbs/00_utils.ipynb 10
+# %% ../nbs/00_utils.ipynb 8
 # Extract direction and speed from the selected objects using RAFT (optical flow algorithm)..
 
 
@@ -237,8 +237,8 @@ def get_velocity(img1:str, img2:str, boxes:list, res:np.ndarray, model=None, sav
         x1, y1, x2, y2 = box[:4]
         mid_x = int(x1+((x2-x1)/2))
         mid_y = int(y1+((y2-y1)/2))
-        flows_u = result[int(y1):int(y2), int(x1):int(x2), 1]
-        flows_v = result[int(y1):int(y2), int(x1):int(x2), 0]
+        flows_u = result[int(y1):int(y2), int(x1):int(x2), 0]
+        flows_v = result[int(y1):int(y2), int(x1):int(x2), 1]
         mean_u = flows_u.mean()
         mean_v = flows_v.mean()
         img = display_direction(img, mean_u, mean_v, (mid_x, mid_y))
