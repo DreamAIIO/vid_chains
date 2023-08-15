@@ -6,9 +6,8 @@ from langchain_ray.utils import *
 from langchain_ray.chains import *
 from langchain_ray.imports import *
 
-from ultralytics import YOLO
 import math
-from typing import Union
+from ultralytics import YOLO
 
 import numpy as np
 import torch
