@@ -2,7 +2,7 @@
 
 # %% auto 0
 __all__ = ['load_obj_model', 'detect_objects', 'get_width', 'list_widths', 'centroid', 'list_centroids', 'inter_dist',
-           'focal_len_to_px', 'camera_to_obj_dist', 'show_mask', 'show_points', 'show_box', 'show_anns',
+           'focal_len_to_px', 'camera_to_obj_dist', 'show_mask', 'show_points', 'show_box', 'show_anns', 'combine_mask',
            'get_mask_area', 'calculateIoU', 'segment_with_prompts', 'load_sam_model', 'segment_everything', 'segment',
            'get_points', 'display_direction', 'get_velocity']
 
@@ -93,7 +93,6 @@ def show_mask(mask, ax, random_color=False):
         color = np.array([30/255, 144/255, 255/255, 0.6])
     h, w = mask.shape[-2:]
     mask_image = mask.reshape(h, w, 1) * color.reshape(1, 1, -1)
-    # print(mask_image.shape)
     ax.imshow(mask_image)
 
 def show_points(coords, labels, ax, marker_size=375):
@@ -121,6 +120,14 @@ def show_anns(anns):
         color_mask = np.concatenate([np.random.random(3), [0.35]])
         img[m] = color_mask
     ax.imshow(img)
+
+def combine_mask(image:np.ndarray, mask:np.ndarray, color:tuple=None):
+    if color == None:
+        color = (30, 144, 255)
+    h, w = mask.shape[-2:]
+    mask_image = mask.reshape(h,w)
+    image[mask_image] = color
+    return image
 
 
 # %% ../nbs/00_utils.ipynb 6
@@ -155,8 +162,9 @@ def segment_with_prompts(sam_model:Sam, image:np.ndarray, **kwargs):
   points = kwargs.get('points', np.array([[w*0.5, h*0.5], [0, h], [w, 0], [0,0], [w,h]]))
   labels = kwargs.get('labels', np.array([1, 0, 0, 0, 0]))
   mask = kwargs.get('mask', None)
-  mask = st.resize(mask, (256, 256), order=0, preserve_range=True, anti_aliasing=False)
-  mask = np.stack((mask,)*1, axis = 0)
+  if mask != None:
+    mask = st.resize(mask, (256, 256), order=0, preserve_range=True, anti_aliasing=False)
+    mask = np.stack((mask,)*1, axis = 0)
   predictor = SamPredictor(sam_model)
   predictor.set_image(image)
   masks, scores, logits = predictor.predict(point_coords=points, point_labels=labels, mask_input=mask, multimask_output=False)
@@ -171,9 +179,12 @@ def segment_everything(sam_model:Sam, image:np.ndarray, **kwargs):
   mask = kwargs['mask']
   mask_generator = SamAutomaticMaskGenerator(sam_model)
   masks = mask_generator.generate(image)
+  if mask == None:
+    return masks
   sorted_anns = sorted(masks, key=(lambda x: x['area']), reverse=True)
   best = -1.0
   ind = -100
+
   area1 = get_mask_area(mask.astype(int))
   for i in range(10):
     val = calculateIoU(mask.astype(int), sorted_anns[i]['segmentation'].astype(int))
@@ -185,14 +196,16 @@ def segment_everything(sam_model:Sam, image:np.ndarray, **kwargs):
     elif val > best:
       ind = i
       best = val
-  return masks[ind]
+  return sorted_anns[ind]
 
 def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, **kwargs):
   image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-  mask_fname = kwargs.get('mask_path', 'mask.png')
-  mask = cv2.imread(mask_fname)
-  mask = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
-  mask = mask.astype(bool)
+  mask_fname = kwargs.get('mask_path', None)
+  mask = None
+  if mask_fname != None:
+    mask = cv2.imread(mask_fname)
+    mask = cv2.cvtColor(mask, cv2.COLOR_RGB2GRAY)
+    mask = mask.astype(bool)
   h,w,_ = image.shape
   points = kwargs.get('points', np.array([[w*0.5, h*0.5], [0, h], [w, 0], [0,0], [w,h]]))
   labels = kwargs.get('labels', np.array([1, 0, 0, 0, 0]))
@@ -200,10 +213,7 @@ def segment(sam_model:Sam, image:np.ndarray, seg_function=segment_with_prompts, 
   return masks
 
 # %% ../nbs/00_utils.ipynb 7
-def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bool=False, stream:bool=True):
-    if isinstance(img, str):
-        img = cv2.imread(img)
-    yolo = load_obj_model()
+def get_points(yolo, img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bool=False, stream:bool=True):
     result = detect_objects(model = yolo, img = img, stream = stream, draw_bbox = draw_bbox)
     points = []
     labels = []
@@ -211,8 +221,8 @@ def get_points(img:Union[str, np.ndarray], draw_bbox:bool = False, return_img:bo
         x1, y1, x2, y2 = box[:4]
         mid_x = int(x1+((x2-x1)/2))
         mid_y = int(y1+((y2-y1)/2))
-        points.append([[mid_x, mid_y]])
-        labels.append(1)# 
+        points.append([mid_x, mid_y])
+        labels.append(1)
     if return_img:
         return result[0]['img'], result[0]['boxes'], points, labels 
     return result[0]['boxes'], points, labels
