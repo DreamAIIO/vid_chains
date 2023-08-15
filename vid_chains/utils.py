@@ -153,7 +153,6 @@ def combine_mask(image:np.ndarray, mask:np.ndarray, color:tuple=None):
     image[mask_image] = color
     return image
 
-
 # %% ../nbs/00_utils.ipynb 6
 # Object Segmentation with SAM...
 
