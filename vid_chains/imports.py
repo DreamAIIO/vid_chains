@@ -7,7 +7,8 @@ from langchain_ray.chains import *
 from langchain_ray.imports import *
 
 import math
-from ultralytics import YOLO
+from ultralytics import YOLO, SAM
+import supervision as sv
 
 import numpy as np
 import torch
@@ -16,16 +17,16 @@ import cv2
 import os
 import sys
 import skimage.transform as st
-from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
-from segment_anything.modeling import Sam
+# from segment_anything import sam_model_registry, SamPredictor, SamAutomaticMaskGenerator
+# from segment_anything.modeling import Sam
 
 try:
     from mmflow.apis import inference_model, init_model
     from mmflow.datasets import visualize_flow, write_flow
-    import mmcv
+    # import mmcv
 except:
     os.system('mim install mmcv-full==1.6.0')
-    import mmcv
+    # import mmcv
     from mmflow.apis import inference_model, init_model
     from mmflow.datasets import visualize_flow, write_flow
     
