@@ -3,7 +3,7 @@
 # %% auto 0
 __all__ = ['load_obj_model', 'detect_objects', 'annotateImage', 'get_width', 'list_widths', 'centroid', 'list_centroids',
            'inter_dist', 'focal_len_to_px', 'camera_to_obj_dist', 'get_points', 'draw_arrow', 'get_velocity',
-           'infer_video', 'generate_video']
+           'infer_video', 'generate_video', 'intersection_area', 'detect_obstacles', 'obstacle_avoidance']
 
 # %% ../nbs/00_utils.ipynb 2
 from .imports import *
@@ -25,7 +25,11 @@ def detect_objects(
         model,
         image:Union[np.ndarray, str],
         stream:bool = True,
-        task:str = "detect", 
+        task:str = "detect",
+        conf:float = 0.25,
+        iou:float = 0.7,
+        augment:bool = False,
+        imgsz:int = 640, 
         names:list = None, 
         exclude:list = None,   
         return_only_boxes:bool = True, 
@@ -43,7 +47,8 @@ def detect_objects(
             exclude = [e.lower() for e in exclude]
             names = [v for v in list(classes_dict.values()) if not v in exclude]
             classes = [list(classes_dict.keys())[list(classes_dict.values()).index(name)] for name in names]
-        results = model(image, stream=stream, classes=classes)
+        # print(classes)
+        results = model(image, stream=stream, classes=classes, conf=conf, iou=iou, augment=augment, imgsz=imgsz)
         if return_only_boxes:
             return [{"boxes": r.boxes.data.detach().cpu().tolist()} for r in results]
     elif task == "segment": # Using the SAM model..
@@ -62,15 +67,15 @@ def annotateImage(
         results, 
         draw_bbox:bool = True,
         draw_mask:bool = False, 
-        yolo:bool = True,
+        label:bool = True,
         conf_thresh:float = 0.0, 
         names:list = None, 
         exclude:list = None, 
-        area_thresh:int = 200
+        area_thresh:int = 0
     ):
-    labels = ''
+    labels = None
     detections=results
-    if yolo:
+    if label:
         classes_dict = {0: 'person', 1: 'bicycle', 2: 'car', 3: 'motorcycle', 4: 'airplane', 5: 'bus', 6: 'train', 7: 'truck', 8: 'boat', 9: 'traffic light', 10: 'fire hydrant', 11: 'stop sign', 12: 'parking meter', 13: 'bench', 14: 'bird', 15: 'cat', 16: 'dog', 17: 'horse', 18: 'sheep', 19: 'cow', 20: 'elephant', 21: 'bear', 22: 'zebra', 23: 'giraffe', 24: 'backpack', 25: 'umbrella', 26: 'handbag', 27: 'tie', 28: 'suitcase', 29: 'frisbee', 30: 'skis', 31: 'snowboard', 32: 'sports ball', 33: 'kite', 34: 'baseball bat', 35: 'baseball glove', 36: 'skateboard', 37: 'surfboard', 38: 'tennis racket', 39: 'bottle', 40: 'wine glass', 41: 'cup', 42: 'fork', 43: 'knife', 44: 'spoon', 45: 'bowl', 46: 'banana', 47: 'apple', 48: 'sandwich', 49: 'orange', 50: 'broccoli', 51: 'carrot', 52: 'hot dog', 53: 'pizza', 54: 'donut', 55: 'cake', 56: 'chair', 57: 'couch', 58: 'potted plant', 59: 'bed', 60: 'dining table', 61: 'toilet', 62: 'tv', 63: 'laptop', 64: 'mouse', 65: 'remote', 66: 'keyboard', 67: 'cell phone', 68: 'microwave', 69: 'oven', 70: 'toaster', 71: 'sink', 72: 'refrigerator', 73: 'book', 74: 'clock', 75: 'vase', 76: 'scissors', 77: 'teddy bear', 78: 'hair drier', 79: 'toothbrush'}
         classes = list(classes_dict.keys())
         if names:
@@ -276,3 +281,76 @@ def generate_video(
     for i in range(len(frames)):
         out.write(frames[i].astype(np.uint8))
     out.release()
+
+# %% ../nbs/00_utils.ipynb 8
+def intersection_area(a, b):  # returns None if rectangles don't intersect
+    dx = min(a[2], b[2]) - max(a[0], b[0])
+    dy = min(a[3], b[3]) - max(a[1], b[1])
+    # print(dx, dy)
+    if (dx>=0) and (dy>=0):
+        return dx*dy
+
+
+def detect_obstacles(img:np.ndarray,
+                     target_box:list, 
+                     factor:float = 0.5,
+                     conf:float = 0.25, 
+                     iou:float = 0.7, 
+                     imgsz:int = 640,
+                     augment:bool = False,
+                     model = None, 
+                     objects = ["car"], 
+                     alpha:float = 0.4
+    ):
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    obstacles_list = []
+    if model:
+        # result = detect_objects(model=model, image=img, stream=True, task="detect", return_only_boxes=False, names=objects)
+        result = detect_objects(model=model, task="detect", image=img, return_only_boxes=False)
+    else:
+        result = detect_objects(model=load_obj_model(), image=img, stream=True, task="detect", return_only_boxes=False, names=objects, conf=conf, iou=iou, augment=augment, imgsz=imgsz)
+    
+    target_area = (target_box[2]-target_box[0]) * (target_box[3]-target_box[1])
+    img = annotateImage(image=img, results=result, label=True)
+    i = 0
+    res_img = None
+    for box in result.xyxy:
+        
+        inter_area = intersection_area(box, target_box)
+        if inter_area:
+            ratio = inter_area / target_area
+            if ratio >= factor:
+                obstacles_list.append(result[i])
+                # img = cv2.rectangle(img, (int(box[0]), int(box[1])), (int(box[2]), int(box[3])), color = (255, 0, 0), thickness=2)
+        i+=1
+    if len(obstacles_list) == 0:
+        res_img = cv2.rectangle(img.copy(), (int(target_box[0]), int(target_box[1])), (int(target_box[2]), int(target_box[3])), color = (0,255,0), thickness=2)
+    else:
+        res_img = cv2.rectangle(img.copy(), (int(target_box[0]), int(target_box[1])), (int(target_box[2]), int(target_box[3])), (255,0,0), 2)
+    # res_img = cv2.addWeighted(res_img, alpha, img, 1 - alpha, 0)
+    return obstacles_list, res_img
+
+
+
+# %% ../nbs/00_utils.ipynb 9
+def obstacle_avoidance(video_path:str, 
+                       target_box:list, 
+                       factor:float=0.01, 
+                       objects:list = ["airplane", "car", "person", "bus", "truck"]
+    ):
+    cap = cv2.VideoCapture(video_path)
+    yolo = load_obj_model(task="detect")
+
+    frames = []
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    while cap.isOpened():
+        ret, frame = cap.read()
+        if ret:
+            obstacle_list, res_img = detect_obstacles(img=frame, target_box=target_box, factor=factor, model=yolo, objects=objects)
+            # plt.imshow(res_img)
+            res_img = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
+            frames.append(res_img)
+            print("frame No:", len(frames))
+        else:
+            break
+    return frames, fps, obstacle_list
