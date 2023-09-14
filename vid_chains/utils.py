@@ -306,12 +306,12 @@ def detect_obstacles(img:np.ndarray,
     obstacles_list = []
     if model:
         # result = detect_objects(model=model, image=img, stream=True, task="detect", return_only_boxes=False, names=objects)
-        result = detect_objects(model=model, task="detect", image=img, return_only_boxes=False)
+        result = detect_objects(model=model, task="detect", image=img, return_only_boxes=False, names=objects, conf=conf, imgsz=imgsz, iou=iou, augment=augment)
     else:
         result = detect_objects(model=load_obj_model(), image=img, stream=True, task="detect", return_only_boxes=False, names=objects, conf=conf, iou=iou, augment=augment, imgsz=imgsz)
     
     target_area = (target_box[2]-target_box[0]) * (target_box[3]-target_box[1])
-    img = annotateImage(image=img, results=result, label=True)
+    # img = annotateImage(image=img, results=result, label=True)
     i = 0
     res_img = None
     for box in result.xyxy:
@@ -326,7 +326,7 @@ def detect_obstacles(img:np.ndarray,
     if len(obstacles_list) == 0:
         res_img = cv2.rectangle(img.copy(), (int(target_box[0]), int(target_box[1])), (int(target_box[2]), int(target_box[3])), color = (0,255,0), thickness=2)
     else:
-        res_img = cv2.rectangle(img.copy(), (int(target_box[0]), int(target_box[1])), (int(target_box[2]), int(target_box[3])), (255,0,0), 2)
+        res_img = cv2.rectangle(img.copy(), (int(target_box[0]), int(target_box[1])), (int(target_box[2]), int(target_box[3])), (0,0,255), 2)
     # res_img = cv2.addWeighted(res_img, alpha, img, 1 - alpha, 0)
     return obstacles_list, res_img
 
@@ -336,6 +336,9 @@ def detect_obstacles(img:np.ndarray,
 def obstacle_avoidance(video_path:str, 
                        target_box:list, 
                        factor:float=0.01, 
+                       conf:float=0.25,
+                       iou:float=0.7,
+                       imgsz:int=640,
                        objects:list = ["airplane", "car", "person", "bus", "truck"]
     ):
     cap = cv2.VideoCapture(video_path)
@@ -346,9 +349,9 @@ def obstacle_avoidance(video_path:str,
     while cap.isOpened():
         ret, frame = cap.read()
         if ret:
-            obstacle_list, res_img = detect_obstacles(img=frame, target_box=target_box, factor=factor, model=yolo, objects=objects)
+            obstacle_list, res_img = detect_obstacles(img=frame, target_box=target_box, factor=factor, model=yolo, objects=objects, conf=conf, iou=iou, imgsz=imgsz)
             # plt.imshow(res_img)
-            res_img = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
+            # res_img = cv2.cvtColor(res_img, cv2.COLOR_BGR2RGB)
             frames.append(res_img)
             print("frame No:", len(frames))
         else:
